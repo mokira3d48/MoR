@@ -15,29 +15,25 @@
 \usepackage{graphicx}
 \graphicspath{ {./images/} }
 
+\usepackage{fontsize}
+\changefontsize{11}
 
-\title{Predict future sale}
+\setlength{\parindent}{0pt} % Paragraph indentation
+\setlength{\parskip}{1.0em} % Vertical space between paragraphs
+
+
+\title{Analyse Détaillée de Mixture-of-Recursions (MoE)}
 
 
 \author{
- Ziyue Qi \\
-  School of Coumputing and Information\\
-  University of Pittsburgh\\
-  Pittsburgh, PA 15213 \\
-  \texttt{ziq2@pitt.edu} \\
-  %% examples of more authors
-   \And
- Zixuan Lu \\
-  School of Coumputing and Information\\
-  University of Pittsburgh\\
-  Pittsburgh, PA 15213 \\
-  \texttt{ZIL50@pitt.edu} \\
-  \And
- Yuchen Lu \\
-  School of Coumputing and Information\\
-  University of Pittsburgh\\
-  Pittsburgh, PA 15213 \\
-  \texttt{yul217@pitt.edu} \\
+ Mokira \\
+  % School of Coumputing and Information\\
+  % University of Pittsburgh\\
+  % Pittsburgh, PA 15213 \\
+  % \texttt{dr.mokira@gmail.com} \\
+  Ingénieur Machine Learning \\
+  (+229) 019 798 5109 \\
+  \texttt{dr.mokira@gmail.com} \\
   %% \AND
   %% Coauthor \\
   %% Affiliation \\
@@ -58,7 +54,20 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-Data mining is a good way to find the relationship between raw data and predict the target we want which is also widely used in different field nowadays. In this project, we implement a lots of technology and method in data mining to predict the sale of an item based on its previous sale. We create a strong model to predict the sales. After evaluating this model, we conclude that this model can be used in normal life for future sale’s prediction.
+Pourquoi MoR est une petite révolution ?
+Imaginez un modèle de langage qui combine l’efficacité mémoire
+des architectures à partage de paramètres (comme ALBERT) avec l’intelligence
+computationnelle du calcul adaptatif (comme Mixture-of-Depths) :
+c’est exactement ce que propose Mixture-of-Recursions (MoR).
+Au lieu d’utiliser des couches distinctes, MoR réutilise un même bloc
+de calcul de manière récursive, tandis qu’un routeur léger décide
+dynamiquement pour chaque mot s’il doit « sortir » rapidement ou "réfléchir"
+plus longtemps en passant par des recursions supplémentaires. Résultat ?
+Une réduction simultanée de la taille du modèle (-50\% de paramètres),
+du temps de calcul (meilleur débit d’inférence) et de la mémoire cache,
+sans sacrifier la performance --- ouvrant la voie à des LLMs à la fois agiles,
+économiques et puissants. Une avancée architecturale majeure qui mérite
+d’être explorée dans les moindres détails !
 \end{abstract}
 
 
@@ -67,8 +76,44 @@ Data mining is a good way to find the relationship between raw data and predict 
 
 
 \section{Introduction}
-Our project is a competition on Kaggle (Predict Future Sales). We are provided with daily historical sales data (including each products’ sale date, block ,shop price and amount). And we will use it to forecast the total amount of each product sold next month. Because of the list of shops and products slightly changes every month. We need to create a robust model that can handle such situations.
+Aujourd'hui, les intelligences artificielles qui comprennent et génèrent
+du langage, comme celles qui animent les assistants virtuels, reposent
+sur des architectures dites « Transformers ». Si elles sont impressionnantes,
+leur formidable puissance a un coût : une gourmandise excessive en calcul
+et en mémoire. Pour fonctionner, ces modèles doivent en effet traiter
+chaque mot d'un texte avec la même intensité. Par exemple, pour comprendre
+un mot complexe comme « philosophique », un modèle de langue doit lui accorder
+autant de temps et de ressources qu’à un mot simple comme « le » ou « et ».
+Cette approche uniforme est coûteuse et inefficace.
 
+Les LLMs sont puissants, mais gourmands en mémoire et en calcul.
+Et si on pouvait créer un modèle à la fois compact et intelligent,
+capable de concentrer ses efforts sur les mots qui en valent vraiment
+la peine ?
+
+C'est la réponse à cette question qui a donné naissance
+à la \textbf{Mixture-of-Recursions (MoR)}. une nouvelle architecture
+qui permet à un modèle de langage d'allouer intelligemment son « effort
+de calcul » de manière adaptive, token par token. Imaginez une usine
+de traitement où les produits simples sont expédiés rapidement
+après une étape, tandis que les produits complexes passent
+par plusieurs stations de contrôle pour un travail approfondi.
+MoR opère de la même façon : en réutilisant un même groupe de couches
+de neurones de manière recursive, et en utilisant un mécanisme de décision
+légère pour déterminer quels mots méritent plus de « réflexion ».
+Cette méthode unifie pour la première fois les gains en efficacité
+mémoire (moins de paramètres) et en efficacité computationnelle
+(moins de calculs superflus), sans compromettre les performances.
+
+Dans ce didacticiel, nous commencerons par un rappel des concepts
+fondamentaux nécessaires à la compréhension. Ensuite, nous définirons
+précisément le problème qui se pose. Puis, nous détaillerons
+le fonctionnement de la solution proposée par MoR pour résoudre le problème,
+Nous illustrerons cette solution par des exemples concrets
+et une implémentation simplifiée en Python.
+Nous discuterons ensuite des apports majeurs et des limites de cette solution,
+et proposerons des pistes d'amélioration futures,
+et enfin conclure sur la portée de ce travail.
 
 \section{Task description and data construction}
 \label{sec:headings}
