@@ -213,34 +213,81 @@ de paramètres et le calcul adaptatif.
  (voir figure 1). Cela permet d'économiser en calcul sur des mots simples
  à comprendre.
 
- \subsection{Token choice routing}
-Imaginez qu'avant même la course, on affecte un numéro de dossard
-à chaque coureur qui indique combien de tours il doit courir.
- Dès le début, un routeur regarde chaque token et lui assigne une "profondeur
- de récursion". Prenons par semple la phrase suivante :
- \texttt{"Le chat philosophique mange la nourriture délicate."}, pour chaque
- mot on aura :
- 
- \begin{itemize}
-  \item \texttt{"Le"} ---> $1$ tour,
-  \item \texttt{"Chat"} ---> $2$ tours,
-  \item \texttt{"Philosophique"} ---> $3$ tours.
- \end{itemize}
+\subsection{Expert choice routing}
+Imaginez qu'on place un filtre à chaque sortie d'une couche.
 
+\begin{enumerate}
+  \item À la fin de la première étape de calcul, un "manager" (le routeur)
+  évalue tous les coureurs et dit : "Seuls les $70\%$ qui ont le plus d'énergie
+  continuent !". Les autres (les mots simples comme \texttt{"le"},
+  \texttt{"la"}) quittent la piste.
+  
+  \item Les tokens restants font une deuxième tour. À la fin, le manager
+  regarde à nouveau et dit : "Maintenant, seuls les $40\%$ meilleurs
+  continuent !".
+
+  \item Le processus se répète, en gardant de moins en moins de tokens
+  à chaque fois.
+\end{enumerate}
 
 \begin{figure}[h]
   \centering
+  \includegraphics[scale=0.4]{images/expert_choice_routing.png}
+  \caption{Routage par choix d'expert \cite{bae2025mixtureofrecursionslearningdynamicrecursive}}
+  \label{fig:expert-choice-routing}
+\end{figure}
+
+Chaque "étape de récursion" agit comme un expert qui choisit les tokens
+qu'il veut traiter. Ce qui permet un contrôle très précis du budget calcul
+à chaque étape. On sait exactement combien de tokens sont actifs.
+
+\subsection{Token choice routing}
+Le token lui-même, via sa représentation initiale, "choisit" en quelque sorte
+combien de calcul il va recevoir. Dès le début, un routeur regarde
+la représentation de chaque token et en fonction de cela il assigne
+une "profondeur de récursion" (nombre de tour).
+ 
+ \begin{figure}[h]
+  \centering
   \includegraphics[scale=0.5]{images/token_choice_routing.png}
-  \caption{Routage de token \cite{bae2025mixtureofrecursionslearningdynamicrecursive}}
+  \caption{Routage par choix du token \cite{bae2025mixtureofrecursionslearningdynamicrecursive}}
   \label{fig:token-choice-routing}
 \end{figure}
+ 
+ Prenons par exemple la phrase suivante :
+ \texttt{"Le chat philosophique mange la nourriture délicate."}, pour chaque
+ mot, en fonction de leur représentation, le routeur va décider immédiatement
+ du nombre de tours qu'il fera.
+ 
+ \begin{itemize}
+  \item \texttt{"Le"}, \texttt{"la"} ---> $1$ recursion
+  (sort immédiatement après le premier passage, c'est un mot de structure);
+  \item \texttt{"chat"}, \texttt{"mange"}, \texttt{"nourriture}" ---> $2$ tours
+  (mots normaux);
+  \item \texttt{"philosophique"}, \texttt{"délicate"} ---> $3$ tours
+  (mots complexes qui nécessitent une "réflexion" profonde).
+ \end{itemize}
+
+ À la fin du permier passage, le routeur sélectionne \texttt{"philosophique"},
+ \texttt{"délicate"}, \texttt{"chat"}, \texttt{"mange"}. \texttt{"Le"}
+ et \texttt{"la"} sortent. Ensuite, à la fin du 2ème passage, le routeur
+ sélectionne \texttt{"philosophique"} et \texttt{"délicate"}.
+ Les autres sortent. Au 3ème passage, seuls les deux mots complexes restants
+ terminent leur traitement.
+
+ Chaque token parcourt le nombre de boucles qui lui a été assigné,
+ puis s'arrête. Il n'y a pas de décision à prendre après le départ.
+ En effet, c'est le token lui-même, via sa représentation initiale,
+ qui "choisit" en quelque sorte combien de calcul il va recevoir.
+
+Les mots simples ont été calculés rapidement, libérant les ressources
+pour que le modèle réfléchisse longuement aux mots complexes.
+Tout cela en réutilisant le même petit bloc de couches.
+
+
 %  \cite{bae2025mixtureofrecursionslearningdynamicrecursive}
 
-Comme les tokens sortent à des étapes différentes donc ne traversent
-pas les même nombre d'étapes, on ne met en cache que les paires
-Clé-Valeur des tokens qui ne sont encore sortis des couches.
-On évite de stocker des résultats de calculs inutiles pour les tokens
-déjà sortis. Ce qui optimise la mémoire encore plus.
+
 
 
 \subsection{Headings: second level}
