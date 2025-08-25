@@ -210,7 +210,22 @@ de paramètres et le calcul adaptatif.
  pour chaque token s'il doit "sortir" (il a fini de réfléchir)
  ou s'il doit passer une nouvelle fois dans le bloc récursif (il a besoin
  de plus de réflexion). C'est le \textit{Routage Adaptatif par Token}
- (voir figure 1). Cela permet d'économiser en calcul sur des mots simples à comprendre.
+ (voir figure 1). Cela permet d'économiser en calcul sur des mots simples
+ à comprendre.
+
+ \subsection{Token choice routing}
+Imaginez qu'avant même la course, on affecte un numéro de dossard
+à chaque coureur qui indique combien de tours il doit courir.
+ Dès le début, un routeur regarde chaque token et lui assigne une "profondeur
+ de récursion". Prenons par semple la phrase suivante :
+ \texttt{"Le chat philosophique mange la nourriture délicate."}, pour chaque
+ mot on aura :
+ 
+ \begin{itemize}
+  \item \texttt{"Le"} ---> $1$ tour,
+  \item \texttt{"Chat"} ---> $2$ tours,
+  \item \texttt{"Philosophique"} ---> $3$ tours.
+ \end{itemize}
 
 
 \begin{figure}[h]
@@ -220,6 +235,12 @@ de paramètres et le calcul adaptatif.
   \label{fig:token-choice-routing}
 \end{figure}
 %  \cite{bae2025mixtureofrecursionslearningdynamicrecursive}
+
+Comme les tokens sortent à des étapes différentes donc ne traversent
+pas les même nombre d'étapes, on ne met en cache que les paires
+Clé-Valeur des tokens qui ne sont encore sortis des couches.
+On évite de stocker des résultats de calculs inutiles pour les tokens
+déjà sortis. Ce qui optimise la mémoire encore plus.
 
 
 \subsection{Headings: second level}
