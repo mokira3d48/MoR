@@ -13,13 +13,15 @@
 \usepackage{microtype}      % microtypography
 \usepackage{lipsum}
 \usepackage{graphicx}
+\usepackage{csquotes}
+
 \graphicspath{ {./images/} }
 
 \usepackage{fontsize}
 \changefontsize{11}
 
 \setlength{\parindent}{0pt} % Paragraph indentation
-\setlength{\parskip}{1.0em} % Vertical space between paragraphs
+\setlength{\parskip}{0.8em} % Vertical space between paragraphs
 
 
 \title{Analyse Détaillée de Mixture-of-Recursions (MoE)}
@@ -115,14 +117,110 @@ Nous discuterons ensuite des apports majeurs et des limites de cette solution,
 et proposerons des pistes d'amélioration futures,
 et enfin conclure sur la portée de ce travail.
 
-\section{Task description and data construction}
-\label{sec:headings}
-We are provided with five datasets from Kaggle: Sales train, Sale test, items, item categories and shops. In the Sales train dataset, it provides the information about the sales’ number of an item in a shop within a day. In the Sales test dataset, it provides the shop id and item id which are the items and shops we need to predict. In the other three datasets, we can get the information about item’s name and its category, and the shops’ name.
-\paragraph{Task modeling.}
-We approach this task as a regression problem. For every item and shop pair, we need to predict its next month sales(a number).
-\paragraph{Construct train and test data.}
-In the Sales train dataset, it only provides the sale within one day, but we need to predict the sale of next month. So we sum the day's sale into month's sale group by item, shop, date(within a month).
-In the Sales train dataset, it only contains two columns(item id and shop id). Because we need to provide the sales of next month, we add a date column for it, which stand for the date information of next month.
+\section{Connaissances de Base Nécessaires}
+\label{sec:base}
+Pour comprendre ce papier, il faut se familiariser avec quelques concepts
+clés des modèles de type Transformers.
+
+\subsection{Architecture Transformer de base (Vaswani et al., 2017)}
+Un transformer est un modèle de réseau de neurones qui utilise
+des \textbf{mécanismes d'attention} pour traiter des séquences de données
+(comme du texte). Il est composé de couches (layers)
+empilées les unes sur les autres. Chaque couche a une \textbf{auto-attention}
+et un réseau \textbf{feed-forward}.
+
+Imaginez un Transformer comme une usine avec plusieurs étages (couches/layers).
+Chaque étage traite l'information et la passe à l'étage suivant.
+Dans un modèle traditionnel comme GPT :
+
+Entrée : "Le chat mange" $\rightarrow$ Couche $1$ $\rightarrow$ Couche $2$
+$\rightarrow \ldots \rightarrow $  Couche $N$ → Sortie : "le poisson"
+
+À chaque étage, chaque mot (token) regarde tous les autres mots pour mieux
+se comprendre soi-même (c'est l'auto-attention), puis une petite usine interne
+(le feed-forward) pour calculer sa représentation.
+
+\subsection{Cache KV (Key-Value Cache)}
+Pour générer du texte de manière autoregressive (un mot à la fois),
+on doit éviter de recalculer les représentations des mots passés
+à chaque nouvelle étape. Le cache KV stocke les "clés" et "valeurs" de tous
+les mots déjà générés, ce qui rend le processus beaucoup plus rapide.
+
+De façon analogique, lorsque vous lisez un livre, vous n'oubliez
+pas les chapitres précédents. Votre cerveau garde en cache les informations
+importantes. Le cache KV fait la même chose pour le modèle.
+
+\subsection{Partage de Paramètres (Parameter Sharing)}
+Au lieu d'avoir des poids uniques pour chaque couche, on utilise le même jeu
+de poids pour plusieurs couches. Cela réduit énormément la taille du modèle.
+
+Exemple : Au lieu d'avoir 24 stations de travail différentes dans notre usine,
+on n'en a que 8, mais on fait passer la phrase 3 fois par les mêmes 8 stations.
+L'usine est plus petite (moins de paramètres) mais le travail est tout aussi
+profond (3 passages = 24 traitements effectifs).
+
+\subsection{Calcul Adaptatif (Adaptive Computation)}
+L'idée que tous les mots ne méritent pas le même effort de calcul.
+Les mots de structure ("le", "la", "et") sont simples, tandis que les mots
+de fond ("quantique", "philosophie") sont complexes. Le calcul adaptatif
+permet au modèle de "réfléchir" plus longtemps aux mots difficiles.
+
+\section{Le Problème posé}
+Les modèles de langage (LLMs) comme GPT-4 sont très puissants
+mais ont deux énormes défauts :
+
+\begin{itemize}
+  \item  Ils ont des milliards de paramètres, ce qui les rend très coûteux
+  à entraîner et à stocker.
+  \item Le mécanisme d'attention standard a une complexité quadratique $O(n^2)$.
+  Pour générer de longues séquences, le calcul devient extrêmement lent
+  et gourmand en énergie.
+\end{itemize}
+
+Les solutions existantes s'attaquent souvent à un seul de ces problèmes
+à la fois.
+
+\begin{itemize}
+  \item \textit{ALBERT} réduit la taille du modèle mais applique
+  le même nombre de calculs à tous les tokens (inefficient).
+  \item \textit{Mixture-of-Depths} réduit le calcul pour les tokens
+  "faciles" mais n'utilise pas de partage de paramètres, donc la taille
+  du modèle reste grande.
+\end{itemize}
+
+Le problème fondamental est donc : Comment créer un modèle qui est à la fois
+petit (grâce au partage de paramètres) et rapide à l'inférence
+(grâce au calcul adaptatif) sans sacrifier la performance ?
+C'est ce problème que MoR résout.
+
+
+\section{La Solution : Mixture-of-Recursions (MoR)}
+MoR est une architecture unifiée qui combine intelligemment le partage
+de paramètres et le calcul adaptatif.
+
+\subsection{Concept de Base}
+ Au lieu d'empiler $24$ couches différentes, MoR a un petit bloc de $N$
+ couches partagées (par exemple, $8$ couches). Ce bloc va être appliqué
+ de manière répétée (récursive), jusqu'à $N_r$ fois (par exemple, $3$ fois).
+ Le traitement effectif total est de $8 \times 3 = 24$ couches,
+ mais on stocke que $8$ couches de paramètres. Ce qui nous permet d'économiser
+ de la mémoire stockage.
+
+ À la fin de chaque application du bloc récursif, un routeur léger décide
+ pour chaque token s'il doit "sortir" (il a fini de réfléchir)
+ ou s'il doit passer une nouvelle fois dans le bloc récursif (il a besoin
+ de plus de réflexion). C'est le \textit{Routage Adaptatif par Token}
+ (voir figure 1). Cela permet d'économiser en calcul sur des mots simples à comprendre.
+
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.5]{images/token_choice_routing.png}
+  \caption{Routage de token \cite{bae2025mixtureofrecursionslearningdynamicrecursive}}
+  \label{fig:token-choice-routing}
+\end{figure}
+%  \cite{bae2025mixtureofrecursionslearningdynamicrecursive}
+
 
 \subsection{Headings: second level}
 \lipsum[5]
@@ -206,33 +304,33 @@ See awesome Table~\ref{tab:table}.
 
 
 \bibliographystyle{unsrt}
-%\bibliography{references}  %%% Remove comment to use the external .bib file (using bibtex).
+\bibliography{references}  %%% Remove comment to use the external .bib file (using bibtex).
 %%% and comment out the ``thebibliography'' section.
 
 
 %%% Comment out this section when you \bibliography{references} is enabled.
-\begin{thebibliography}{1}
+% \begin{thebibliography}{1}
 
-\bibitem{kour2014real}
-George Kour and Raid Saabne.
-\newblock Real-time segmentation of on-line handwritten arabic script.
-\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
-  International Conference on}, pages 417--422. IEEE, 2014.
+% \bibitem{kour2014real}
+% George Kour and Raid Saabne.
+% \newblock Real-time segmentation of on-line handwritten arabic script.
+% \newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
+%   International Conference on}, pages 417--422. IEEE, 2014.
 
-\bibitem{kour2014fast}
-George Kour and Raid Saabne.
-\newblock Fast classification of handwritten on-line arabic characters.
-\newblock In {\em Soft Computing and Pattern Recognition (SoCPaR), 2014 6th
-  International Conference of}, pages 312--318. IEEE, 2014.
+% \bibitem{kour2014fast}
+% George Kour and Raid Saabne.
+% \newblock Fast classification of handwritten on-line arabic characters.
+% \newblock In {\em Soft Computing and Pattern Recognition (SoCPaR), 2014 6th
+%   International Conference of}, pages 312--318. IEEE, 2014.
 
-\bibitem{hadash2018estimate}
-Guy Hadash, Einat Kermany, Boaz Carmeli, Ofer Lavi, George Kour, and Alon
-  Jacovi.
-\newblock Estimate and replace: A novel approach to integrating deep neural
-  networks with existing applications.
-\newblock {\em arXiv preprint arXiv:1804.09028}, 2018.
+% \bibitem{hadash2018estimate}
+% Guy Hadash, Einat Kermany, Boaz Carmeli, Ofer Lavi, George Kour, and Alon
+%   Jacovi.
+% \newblock Estimate and replace: A novel approach to integrating deep neural
+%   networks with existing applications.
+% \newblock {\em arXiv preprint arXiv:1804.09028}, 2018.
 
-\end{thebibliography}
+% \end{thebibliography}
 
 
 \end{document}
