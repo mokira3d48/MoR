@@ -188,9 +188,6 @@
     \let\Oldlatex\LaTeX
     \renewcommand{\TeX}{\textrm{\Oldtex}}
     \renewcommand{\LaTeX}{\textrm{\Oldlatex}}
-    % Document parameters
-    % Document title
-    \title{MoR}
     
     
     
@@ -442,27 +439,38 @@
 
 \begin{document}
 \maketitle
+
 \begin{abstract}
-Pourquoi MoR est une petite révolution ?
-Imaginez un modèle de langage qui combine l’efficacité mémoire
-des architectures à partage de paramètres (comme ALBERT) avec l’intelligence
-computationnelle du calcul adaptatif (comme Mixture-of-Depths) :
-c’est exactement ce que propose Mixture-of-Recursions (MoR).
-Au lieu d’utiliser des couches distinctes, MoR réutilise un même bloc
-de calcul de manière récursive, tandis qu’un routeur léger décide
-dynamiquement pour chaque mot s’il doit « sortir » rapidement ou "réfléchir"
-plus longtemps en passant par des recursions supplémentaires. Résultat ?
-Une réduction simultanée de la taille du modèle (-50\% de paramètres),
-du temps de calcul (meilleur débit d’inférence) et de la mémoire cache,
-sans sacrifier la performance --- ouvrant la voie à des LLMs à la fois agiles,
-économiques et puissants. Une avancée architecturale majeure qui mérite
-d’être explorée dans les moindres détails !
+% Pourquoi MoR est une petite révolution ?
+% Imaginez un modèle de langage qui combine l’efficacité mémoire
+% des architectures à partage de paramètres (comme ALBERT) avec l’intelligence
+% computationnelle du calcul adaptatif (comme Mixture-of-Depths) :
+% c’est exactement ce que propose Mixture-of-Recursions (MoR).
+% Au lieu d’utiliser des couches distinctes, MoR réutilise un même bloc
+% de calcul de manière récursive, tandis qu’un routeur léger décide
+% dynamiquement pour chaque mot s’il doit « sortir » rapidement ou "réfléchir"
+% plus longtemps en passant par des recursions supplémentaires. Résultat ?
+% Une réduction simultanée de la taille du modèle (-50\% de paramètres),
+% du temps de calcul (meilleur débit d’inférence) et de la mémoire cache,
+% sans sacrifier la performance --- ouvrant la voie à des LLMs à la fois agiles,
+% économiques et puissants. Une avancée architecturale majeure qui mérite
+% d’être explorée dans les moindres détails !
+
+Quand on augmente la taille des modèles de langage (plus de couches,
+plus de paramètres, plus de données), ils deviennent plus performant
+et intelligents. Mais en contrepartie, leur entraînement coûte énormément
+(des semaines de GPU), et leur utilisation (en inférence) demande beaucoup 
+de mémoire et de puissance de calcul. Dans cette recherche, on cherche à garder
+la performance des gros modèles, mais sans payer des prix énormes.
 \end{abstract}
 
 
 % keywords can be removed
 %\keywords{First keyword \and Second keyword \and More}
 
+\newpage
+\tableofcontents
+\newpage
 
 \section{Introduction}
 Aujourd'hui, les intelligences artificielles qui comprennent et génèrent
@@ -671,14 +679,14 @@ Les mots simples ont été calculés rapidement, libérant les ressources
 pour que le modèle réfléchisse longuement aux mots complexes.
 Tout cela en réutilisant le même petit bloc de couches.
 
-    \begin{tcolorbox}[breakable, size=fbox, boxrule=1pt, pad at break*=1mm,colback=cellbackground, colframe=cellborder]
-% \prompt{In}{incolor}{2}{\boxspacing}
-\begin{Verbatim}[commandchars=\\\{\}]
-\PY{k+kn}{import}\PY{+w}{ }\PY{n+nn}{os}
+% \begin{tcolorbox}[breakable, size=fbox, boxrule=1pt, pad at break*=1mm,colback=cellbackground, colframe=cellborder]
+%   % \prompt{In}{incolor}{2}{\boxspacing}
+%   \begin{Verbatim}[commandchars=\\\{\}]
+% \PY{k+kn}{import}\PY{+w}{ }\PY{n+nn}{os}
 
-\PY{n+nb}{print}\PY{p}{(}\PY{n}{os}\PY{o}{.}\PY{n}{cpu\PYZus{}count}\PY{p}{(}\PY{p}{)}\PY{p}{)}
-\end{Verbatim}
-\end{tcolorbox}
+% \PY{n+nb}{print}\PY{p}{(}\PY{n}{os}\PY{o}{.}\PY{n}{cpu\PYZus{}count}\PY{p}{(}\PY{p}{)}\PY{p}{)}
+%   \end{Verbatim}
+% \end{tcolorbox}
 
 
 %  \cite{bae2025mixtureofrecursionslearningdynamicrecursive}
