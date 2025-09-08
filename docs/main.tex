@@ -408,7 +408,7 @@
 
     
   
-\title{Analyse Détaillée de Mixture-of-Recursions (MoE)}
+\title{Analyse Détaillée de Mixture-of-Recursions (MoR)}
 
 
 \author{
@@ -496,9 +496,9 @@ approches au sein d’un Transformer récursif. D’un côté,
 une même pile de couches est réutilisée
 à travers plusieurs étapes de récursion, ce qui réduit le nombre de paramètres;
 de l’autre, des routeurs légers permettent d’adapter dynamiquement
-la profondeur de calcul à chaque jeton.
+la profondeur de calcul à chaque token.
 Cela qui réduit le coût mémoire et accélère les calculs.
-Ainsi, le calcul du score d'attention -- ayant une complexité qudratique
+Ainsi, le calcul du score d'attention -- ayant une complexité quadratique
 -- se limite uniquement aux tokens encore actifs
 à une étape donnée, et le cache mémoire (\textit{KV cache}) ne conserve
 que leurs clés-valeurs, ce qui améliore fortement l’efficacité d’accès.
@@ -520,44 +520,122 @@ mais sans leurs énormes coûts de calcul.
 \newpage
 
 \section{Introduction}
-Aujourd'hui, les intelligences artificielles qui comprennent et génèrent
-du langage, comme celles qui animent les assistants virtuels, reposent
-sur des architectures dites « Transformers ». Si elles sont impressionnantes,
-leur formidable puissance a un coût : une gourmandise excessive en calcul
-et en mémoire. Pour fonctionner, ces modèles doivent en effet traiter
-chaque mot d'un texte avec la même intensité. Par exemple, pour comprendre
-un mot complexe comme « philosophique », un modèle de langue doit lui accorder
-autant de temps et de ressources qu’à un mot simple comme « le » ou « et ».
-Cette approche uniforme est coûteuse et inefficace.
+% Aujourd'hui, les intelligences artificielles qui comprennent et génèrent
+% du langage, comme celles qui animent les assistants virtuels, reposent
+% sur des architectures dites « Transformers ». Si elles sont impressionnantes,
+% leur formidable puissance a un coût : une gourmandise excessive en calcul
+% et en mémoire. Pour fonctionner, ces modèles doivent en effet traiter
+% chaque mot d'un texte avec la même intensité. Par exemple, pour comprendre
+% un mot complexe comme « philosophique », un modèle de langue doit lui accorder
+% autant de temps et de ressources qu’à un mot simple comme « le » ou « et ».
+% Cette approche uniforme est coûteuse et inefficace.
 
-Les LLMs sont puissants, mais gourmands en mémoire et en calcul.
-Et si on pouvait créer un modèle à la fois compact et intelligent,
-capable de concentrer ses efforts sur les mots qui en valent vraiment
-la peine ?
+% Les LLMs sont puissants, mais gourmands en mémoire et en calcul.
+% Et si on pouvait créer un modèle à la fois compact et intelligent,
+% capable de concentrer ses efforts sur les mots qui en valent vraiment
+% la peine ?
 
-C'est la réponse à cette question qui a donné naissance
-à la \textbf{Mixture-of-Recursions (MoR)}. une nouvelle architecture
-qui permet à un modèle de langage d'allouer intelligemment son « effort
-de calcul » de manière adaptive, token par token. Imaginez une usine
-de traitement où les produits simples sont expédiés rapidement
-après une étape, tandis que les produits complexes passent
-par plusieurs stations de contrôle pour un travail approfondi.
-MoR opère de la même façon : en réutilisant un même groupe de couches
-de neurones de manière recursive, et en utilisant un mécanisme de décision
-légère pour déterminer quels mots méritent plus de « réflexion ».
-Cette méthode unifie pour la première fois les gains en efficacité
-mémoire (moins de paramètres) et en efficacité computationnelle
-(moins de calculs superflus), sans compromettre les performances.
+% C'est la réponse à cette question qui a donné naissance
+% à la \textbf{Mixture-of-Recursions (MoR)}. une nouvelle architecture
+% qui permet à un modèle de langage d'allouer intelligemment son « effort
+% de calcul » de manière adaptive, token par token. Imaginez une usine
+% de traitement où les produits simples sont expédiés rapidement
+% après une étape, tandis que les produits complexes passent
+% par plusieurs stations de contrôle pour un travail approfondi.
+% MoR opère de la même façon : en réutilisant un même groupe de couches
+% de neurones de manière recursive, et en utilisant un mécanisme de décision
+% légère pour déterminer quels mots méritent plus de « réflexion ».
+% Cette méthode unifie pour la première fois les gains en efficacité
+% mémoire (moins de paramètres) et en efficacité computationnelle
+% (moins de calculs superflus), sans compromettre les performances.
 
-Dans ce didacticiel, nous commencerons par un rappel des concepts
-fondamentaux nécessaires à la compréhension. Ensuite, nous définirons
-précisément le problème qui se pose. Puis, nous détaillerons
-le fonctionnement de la solution proposée par MoR pour résoudre le problème,
-Nous illustrerons cette solution par des exemples concrets
-et une implémentation simplifiée en Python.
-Nous discuterons ensuite des apports majeurs et des limites de cette solution,
-et proposerons des pistes d'amélioration futures,
-et enfin conclure sur la portée de ce travail.
+% Dans ce didacticiel, nous commencerons par un rappel des concepts
+% fondamentaux nécessaires à la compréhension. Ensuite, nous définirons
+% précisément le problème qui se pose. Puis, nous détaillerons
+% le fonctionnement de la solution proposée par MoR pour résoudre le problème,
+% Nous illustrerons cette solution par des exemples concrets
+% et une implémentation simplifiée en Python.
+% Nous discuterons ensuite des apports majeurs et des limites de cette solution,
+% et proposerons des pistes d'amélioration futures,
+% et enfin conclure sur la portée de ce travail.
+
+Les chercheurs ont découvert que lorsqu’on augmente énormément la taille
+des Transformers — jusqu’à des centaines de milliards de paramètres —
+ces modèles deviennent capables de choses remarquables : ils savent généraliser
+à partir de très peu d’exemples (few-shot learning) et montrent des capacités
+de raisonnement impressionnantes (comme l’ont démontré GPT-3, PaLM, LLaMA,
+Gemini, etc.).
+
+Mais il y a un problème majeur : plus le modèle est grand, plus il devient
+lourd en mémoire et demande << plus de patates >>, je veux dire : plus de
+puissance de calcul. Cela signifie que son entraînement
+comme son utilisation deviennent extrêmement coûteux, au point que seuls
+les très grands centres de données (hyperscale datacenters) —
+ceux que possèdent Google, OpenAI ou Meta — peuvent réellement se le permettre.
+Pour la majorité des chercheurs, entreprises ou institutions,
+ces modèles sont donc inaccessibles.
+
+C’est pour cela que la communauté a commencé à explorer d'autres approaches
+plus efficaces. Jusqu'ici, deux grandes pistes se dégagent :
+partage de paramètres et le calcul adaptatif.
+
+\begin{itemize}
+  \item Supposons
+  qu'on souhaite effectuer dix (10) tâches, au lieu d’acheter dix (10) machines
+  différentes pour les faire, on pourrait acheter une seule machine
+  configurable pour tous les traiter.
+
+  \item Supposons que tu lis un livre, lorsque tu tombes sur des passages
+  ou phrases
+  faciles à comprendre, tu les passes rapidement sans perdre de temps,
+  mais lorsque tu tombes sur des parties difficiles et compliqués,
+  tu ralentis et réfléchis davantage pour mieux les appréhender.
+\end{itemize}
+
+Tous cela pour vous dire que jusqu’ici, il n'y a que deux grandes familles
+d’approches qui existent pour rendre les Transformers plus efficaces :
+la réutilisation de mêmes couches plusieurs fois (layer tying) pour économiser
+des paramètres, et l'arrêt plus tôt des calculs sur les tokens simples
+(early exiting) pour économiser du temps.
+Mais aucun modèle ne réussit vraiment à combiner ces deux stratégies
+dans une seule architecture. Les Recursive Transformers,
+qui réutilisent naturellement un même bloc de couches en boucle,
+semblaient prometteurs. Pourtant, en pratique, rendre cette récursion
+adaptative s’est révélé compliqué, si bien que la plupart des approches
+reviennent encore à une récursion fixe, inefficace pour un calcul
+réellement dynamique au niveau des tokens.
+
+Pour résoudre ce problème qui embêche la combinaison des deux méthodes
+d'optimisation dans un seul modèle , MoR introduit Un petit module appelé
+\textbf{router} décide, pour chaque token, combien de fois il doit passer
+par la pile de couches, de tel sorte que, les tokens faciles se retrouvent
+avec peu de recursion et les tokens difficiles se retrouvent avec plus
+de recursion.
+
+Dans un modèle transformer, chaque passage d’un token dans un bloc
+de Transformer génère et stocke des paires clé–valeur (KV) utilisées
+par le mécanisme d’attention. Mais, dans MoR, comme les tokens
+n’ont pas tous la même profondeur de calcul, alors on stocke uniquement
+les KV en fonction à la profondeur de chaque chaque token.
+Cela réduit donc le trafic mémoire (moins d’écritures/lectures inutiles)
+et augmente le débit (vitesse d'inférence) du modèle.
+
+Le Mixture-of-Recursions (MoR) permet aux modèles de faire du raisonnement
+« silencieux » à l’intérieur même de leur espace latent,
+en appliquant plusieurs fois le même bloc de paramètres.
+Contrairement aux méthodes qui réfléchissent sur un prompt augmenté
+(prompt enrichi)
+avant de générer, MoR fait ce raisonnement directement pendant la génération
+de chaque token. Grâce à son mécanisme de routage, il ajuste dynamiquement
+la profondeur de réflexion selon la difficulté du token, combinant
+ainsi compacité du modèle et calcul adaptatif efficace. Pour illustrer
+ce paragraphe, imaginons un écrivain qui rédige un text, Dans d’autres
+approches, comme le prompt augmenté, il prend des notes détaillées avant
+de commencer à écrire, puis rédige sans revenir dessus. Avec MoR, l’écrivain
+réfléchit en temps réel à chaque mot, et il peut décider de prendre plus
+de temps pour certains mots complexes (réflexion profonde) et moins de temps
+pour les mots simples.
+
 
 \section{Connaissances de Base Nécessaires}
 \label{sec:base}
