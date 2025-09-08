@@ -3,7 +3,7 @@
 \usepackage{arxiv}
 
 \usepackage{fontsize}
-\changefontsize{14}
+\changefontsize{12}
 
     \usepackage[breakable]{tcolorbox}
     \usepackage{parskip} % Stop auto-indenting (to mimic markdown behaviour)
@@ -403,7 +403,7 @@
       }
     % Slightly bigger margins than the latex defaults
     
-    \geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+    \geometry{verbose,tmargin=0.1in,bmargin=1in,lmargin=1in,rmargin=1in}
 
 
     
@@ -489,28 +489,31 @@ plus de paramètres, plus de données), ils deviennent plus performant
 et intelligents. Mais en contrepartie, leur entraînement coûte énormément
 (des semaines de GPU), et leur utilisation (en inférence) demande beaucoup 
 de mémoire et de puissance de calcul.
-Mixture-of-Recursions (MoR) propose une nouvelle façon de rendre les modèles
-de langue à la fois plus performant et moins coûteux.
-Au lieu d’augmenter indéfiniment la taille des modèles — ce qui entraîne
-des besoins énormes en calcul et en mémoire — MoR combine deux approches
-qui ont toujours été séparées jusqu'ici. Il s'agit du partage de paramètres
-et du calcul adaptatif par jeton.
-Concrètement, le modèle réutilise un même bloc de couches plusieurs fois
-(comme une pile de récursions) pour économiser des paramètres,
-et utilise un module léger appelé routeur qui décident dynamiquement
-combien d’étapes de calcul chaque jeton doit parcourir.
-ce qui réduit le coût mémoire et accélère les calculs grâce
-à un cache sélectif des clés-valeurs. Une variante introduit aussi le partage 
-des clés-valeurs du premier passage (\textit{KV sharing}), réduisant fortement
-la latence et l’empreint mémoire lors du préremplissage.
-Résultat : avec moins de paramètres et moins de coûts de calcul,
-MoR atteint une meilleure perplexité et de meilleures performances
-few-shot que les Transformers classiques.
+Jusqu’ici, les approches d’efficacité se concentraient soit sur le partage
+de paramètres, soit sur le calcul adaptatif, sans parvenir à combiner les deux.
+Mixture-of-Recursions (MoR) propose une nouvelle façon de combiner ces deux
+approches au sein d’un Transformer récursif. D’un côté,
+une même pile de couches est réutilisée
+à travers plusieurs étapes de récursion, ce qui réduit le nombre de paramètres;
+de l’autre, des routeurs légers permettent d’adapter dynamiquement
+la profondeur de calcul à chaque jeton.
+Cela qui réduit le coût mémoire et accélère les calculs.
+Ainsi, le calcul du score d'attention -- ayant une complexité qudratique
+-- se limite uniquement aux tokens encore actifs
+à une étape donnée, et le cache mémoire (\textit{KV cache}) ne conserve
+que leurs clés-valeurs, ce qui améliore fortement l’efficacité d’accès.
+En somme, MoR ouvre une voie prometteuse vers la qualité des grands modèles,
+mais sans leurs énormes coûts de calcul.
 \end{abstract}
 
 
 % keywords can be removed
 %\keywords{First keyword \and Second keyword \and More}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.8]{images/MoR.png}
+\end{figure}
 
 \newpage
 \tableofcontents
