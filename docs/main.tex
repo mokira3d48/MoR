@@ -456,12 +456,56 @@
 % économiques et puissants. Une avancée architecturale majeure qui mérite
 % d’être explorée dans les moindres détails !
 
+%  Dans cette recherche, on cherche à garder
+% la performance des gros modèles, mais sans payer des prix énormes. Il existe
+% des techniques pour rendre les modèles plus efficaces : \textbf{Parameter
+% sharing} pour réduire la taille du modèle et \textbf{Adaptive computation}
+% pour réduire le temps d’inférence (temps de calcule). Mais jusqu’à maintenant,
+% les chercheurs faisaient soit l’un, soit l’autre, pas les deux en même temps.
+% Ce qui est un problème. C'est qu'on introduit une nouvelle technique appellée
+% \textbf{MoR (Mixture-of-Recursions)}. Il s'agit d'une approache qui mélange
+% le partage de paramètres (recursive transformer) et le calcul adaptatif
+% (adaptive computation). L’idée est donc de prendre le meilleur
+% des deux mondes. MoR utilise les mêmes couches plusieurs fois en faisant
+% de la récursivité. Un petit module appelé \textit{router} décide,
+% pour chaque token, combien de fois il doit passer par la pile de couches,
+% de tel sorte que les tokens faciles se retrouvent avec peu de recursion
+% et les tokens difficiles se retrouvent avec plus de recursion.
+% L'opération du mécanisme d'attention est très coûteuse car elle nécessite
+% que chaque token regarde tous les autres (complexité quadratique).
+% Or, grâce à la MoR, à chaque récursion, seuls les tokens encore actifs
+% (pas sortis) continuent à calculer leur score attention.
+% Les autres (déjà sortis) ne participent plus, ce qui nous permet d'économiser
+% du temps. En plus, MoR ne stocke en mémoire que les clés/valeurs (KV cache)
+% des tokens actifs. La MoR indroduit \textbf{KV sharing}
+% qui nous permet d'éviter de recalculer et de stocker des KV (key-values)
+% pour chaque récursion, du coup, on réutilise ceux calculés dès
+% la première fois. Ce qui reduit les coûts de calcule au moment où on encode
+% tout le contexte (\textit{prefill}) avant de générer et réduit l'espace
+% en mémoire.
+
 Quand on augmente la taille des modèles de langage (plus de couches,
 plus de paramètres, plus de données), ils deviennent plus performant
 et intelligents. Mais en contrepartie, leur entraînement coûte énormément
 (des semaines de GPU), et leur utilisation (en inférence) demande beaucoup 
-de mémoire et de puissance de calcul. Dans cette recherche, on cherche à garder
-la performance des gros modèles, mais sans payer des prix énormes.
+de mémoire et de puissance de calcul.
+Mixture-of-Recursions (MoR) propose une nouvelle façon de rendre les modèles
+de langue à la fois plus performant et moins coûteux.
+Au lieu d’augmenter indéfiniment la taille des modèles — ce qui entraîne
+des besoins énormes en calcul et en mémoire — MoR combine deux approches
+qui ont toujours été séparées jusqu'ici. Il s'agit du partage de paramètres
+et du calcul adaptatif par jeton.
+Concrètement, le modèle réutilise un même bloc de couches plusieurs fois
+(comme une pile de récursions) pour économiser des paramètres,
+et utilise un module léger appelé routeur qui décident dynamiquement
+combien d’étapes de calcul chaque jeton doit parcourir.
+ce qui réduit le coût mémoire et accélère les calculs grâce
+à un cache sélectif des clés-valeurs. Une variante introduit aussi le partage 
+des clés-valeurs du premier passage (\textit{KV sharing}), réduisant fortement
+la latence et l’empreint mémoire lors du préremplissage.
+Résultat : avec moins de paramètres et moins de coûts de calcul,
+MoR atteint une meilleure perplexité et de meilleures performances
+few-shot que les Transformers classiques.
 \end{abstract}
 
 
