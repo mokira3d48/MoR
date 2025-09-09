@@ -636,6 +636,13 @@ réfléchit en temps réel à chaque mot, et il peut décider de prendre plus
 de temps pour certains mots complexes (réflexion profonde) et moins de temps
 pour les mots simples.
 
+Testé sur des modèles de 135M à 1,7B de paramètres sous des budgets de calcul
+identiques, MoR établit une nouvelle frontière de Pareto en améliorant
+simultanément la loss de validation et les performances en few-shot learning.
+Enfin, son design réduit drastiquement les coûts d’entraînement (FLOPs),
+allège la mémoire à l’inférence et augmente le débit de génération grâce
+à un batching optimisé.
+
 
 \section{Connaissances de Base Nécessaires}
 \label{sec:base}
